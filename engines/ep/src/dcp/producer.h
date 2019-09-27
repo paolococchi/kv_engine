@@ -158,7 +158,6 @@ public:
 
     void notifyStreamReady(Vbid vbucket);
 
-    void notifyBackfillManager();
     bool recordBackfillManagerBytesRead(size_t bytes, bool force);
     void recordBackfillManagerBytesSent(size_t bytes);
     void scheduleBackfillManager(VBucket& vb,

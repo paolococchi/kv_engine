@@ -340,6 +340,9 @@ public:
     /// Wake up the flusher for all shards, if the disk queue is non-empty.
     virtual void wakeUpFlusher() = 0;
 
+    // @todo
+    virtual void notifyBackfillTasks() = 0;
+
     /**
      * Takes a snapshot of the current stats and persists them to disk.
      */

@@ -25,8 +25,9 @@
  */
 class MockDcpBackfillManager : public BackfillManager {
 public:
-    MockDcpBackfillManager(EventuallyPersistentEngine& theEngine)
-        : BackfillManager(theEngine) {
+    MockDcpBackfillManager(EventuallyPersistentEngine& engine,
+                           const std::string& connection)
+        : BackfillManager(engine, connection) {
     }
 
     void setBackfillBufferSize(size_t newSize) {

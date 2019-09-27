@@ -73,8 +73,6 @@ public:
      */
     void seqnoAckVBPassiveStream(Vbid vbid, int64_t seqno);
 
-    void notifyBackfillManagerTasks();
-
     void removeVBConnections(DcpProducer& prod);
 
     /**

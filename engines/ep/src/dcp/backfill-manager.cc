@@ -16,6 +16,7 @@
  */
 
 #include "dcp/backfill-manager.h"
+#include "backfill_task.h"
 #include "bucket_logger.h"
 #include "connmap.h"
 #include "dcp/active_stream.h"
@@ -24,80 +25,11 @@
 #include "dcp/producer.h"
 #include "ep_engine.h"
 #include "ep_time.h"
-#include "executorpool.h"
 #include "kv_bucket.h"
 
-#include <phosphor/phosphor.h>
-
-static const size_t sleepTime = 1;
-
-class BackfillManagerTask : public GlobalTask {
-public:
-    BackfillManagerTask(EventuallyPersistentEngine& e,
-                        std::weak_ptr<BackfillManager> mgr,
-                        double sleeptime = 0,
-                        bool completeBeforeShutdown = false)
-        : GlobalTask(&e,
-                     TaskId::BackfillManagerTask,
-                     sleeptime,
-                     completeBeforeShutdown),
-          weak_manager(mgr) {
-    }
-
-    bool run();
-
-    std::string getDescription();
-
-    std::chrono::microseconds maxExpectedDuration();
-
-private:
-    // A weak pointer to the backfill manager which owns this
-    // task. The manager is owned by the DcpProducer, but we need to
-    // give the BackfillManagerTask access to the manager as it runs
-    // concurrently in a different thread.
-    // If the manager is deleted (by the DcpProducer) then the
-    // ManagerTask simply cancels itself and stops running.
-    std::weak_ptr<BackfillManager> weak_manager;
-};
-
-bool BackfillManagerTask::run() {
-    TRACE_EVENT0("ep-engine/task", "BackFillManagerTask");
-    // Create a new shared_ptr to the manager for the duration of this
-    // execution.
-    auto manager = weak_manager.lock();
-    if (!manager) {
-        // backfill manager no longer exists - cancel ourself and stop
-        // running.
-        cancel();
-        return false;
-    }
-
-    backfill_status_t status = manager->backfill();
-    if (status == backfill_finished) {
-        return false;
-    } else if (status == backfill_snooze) {
-        snooze(sleepTime);
-    }
-
-    if (engine->getEpStats().isShutdown) {
-        return false;
-    }
-
-    return true;
-}
-
-std::string BackfillManagerTask::getDescription() {
-    return "Backfilling items for a DCP Connection";
-}
-
-std::chrono::microseconds BackfillManagerTask::maxExpectedDuration() {
-    // Empirical evidence suggests this task runs under 300ms 99.999% of
-    // the time.
-    return std::chrono::milliseconds(300);
-}
-
-BackfillManager::BackfillManager(EventuallyPersistentEngine& e)
-    : engine(e), managerTask(NULL) {
+BackfillManager::BackfillManager(EventuallyPersistentEngine& e,
+                                 const std::string& c)
+    : engine(e), connection(c) {
     Configuration& config = e.getConfiguration();
 
     scanBuffer.bytesRead = 0;
@@ -127,11 +59,6 @@ void BackfillManager::addStats(DcpProducer& conn,
 }
 
 BackfillManager::~BackfillManager() {
-    if (managerTask) {
-        managerTask->cancel();
-        managerTask.reset();
-    }
-
     while (!activeBackfills.empty()) {
         UniqueDCPBackfillPtr backfill = std::move(activeBackfills.front());
         activeBackfills.pop_front();
@@ -169,13 +96,7 @@ void BackfillManager::schedule(VBucket& vb,
         pendingBackfills.push_back(std::move(backfill));
     }
 
-    if (managerTask && !managerTask->isdead()) {
-        ExecutorPool::get()->wake(managerTask->getId());
-        return;
-    }
-
-    managerTask.reset(new BackfillManagerTask(engine, shared_from_this()));
-    ExecutorPool::get()->schedule(managerTask);
+    engine.getKVBucket()->scheduleBackfill(shared_from_this(), vb.getId());
 }
 
 bool BackfillManager::bytesCheckAndRead(size_t bytes) {
@@ -252,9 +173,8 @@ void BackfillManager::bytesSent(size_t bytes) {
         if (canFitNext && enoughCleared) {
             buffer.nextReadSize = 0;
             buffer.full = false;
-            if (managerTask) {
-                ExecutorPool::get()->wake(managerTask->getId());
-            }
+
+            engine.getKVBucket()->notifyBackfillTasks();
         }
     }
 }
@@ -264,7 +184,6 @@ backfill_status_t BackfillManager::backfill() {
 
     if (activeBackfills.empty() && snoozingBackfills.empty()
         && pendingBackfills.empty()) {
-        managerTask.reset();
         return backfill_finished;
     }
 
@@ -362,7 +281,7 @@ void BackfillManager::moveToActiveQueue() {
         snoozingBackfills.pop_front();
         // If snoozing task is found to be sleeping for greater than
         // allowed snoozetime, push into active queue
-        if (snoozer.first + sleepTime <= ep_current_time()) {
+        if (snoozer.first + BackfillTask::getSleepTime() <= ep_current_time()) {
             activeBackfills.push_back(std::move(snoozer.second));
         } else {
             // Push back the popped snoozing backfill
@@ -372,9 +291,3 @@ void BackfillManager::moveToActiveQueue() {
     }
 }
 
-void BackfillManager::wakeUpTask() {
-    LockHolder lh(lock);
-    if (managerTask) {
-        ExecutorPool::get()->wake(managerTask->getId());
-    }
-}

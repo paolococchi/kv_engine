@@ -168,7 +168,7 @@ DcpProducer::DcpProducer(EventuallyPersistentEngine& e,
       consumerSupportsHifiMfu(false),
       lastSendTime(ep_current_time()),
       log(*this),
-      backfillMgr(std::make_shared<BackfillManager>(engine_)),
+      backfillMgr(std::make_shared<BackfillManager>(engine_, name)),
       streams(streamsMapSize),
       itemsSent(0),
       totalBytesSent(0),
@@ -1223,10 +1223,6 @@ ENGINE_ERROR_CODE DcpProducer::closeStream(uint32_t opaque,
     }
 
     return ret;
-}
-
-void DcpProducer::notifyBackfillManager() {
-    backfillMgr->wakeUpTask();
 }
 
 bool DcpProducer::recordBackfillManagerBytesRead(size_t bytes, bool force) {

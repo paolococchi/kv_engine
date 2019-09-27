@@ -46,14 +46,13 @@
 #include "dcp/backfill.h"
 #include <memcached/engine_common.h>
 #include <memcached/types.h>
+
 #include <list>
 #include <mutex>
 
 class DcpProducer;
 class EventuallyPersistentEngine;
-class GlobalTask;
 class VBucket;
-using ExTask = std::shared_ptr<GlobalTask>;
 
 struct BackfillScanBuffer {
     size_t bytesRead;
@@ -64,7 +63,8 @@ struct BackfillScanBuffer {
 
 class BackfillManager : public std::enable_shared_from_this<BackfillManager> {
 public:
-    BackfillManager(EventuallyPersistentEngine& e);
+    BackfillManager(EventuallyPersistentEngine& e,
+                    const std::string& connection);
 
     virtual ~BackfillManager();
 
@@ -100,7 +100,9 @@ public:
     // backfills between the different queues.
     backfill_status_t backfill();
 
-    void wakeUpTask();
+    auto& getConnection() const {
+        return connection;
+    }
 
 protected:
     //! The buffer is the total bytes used by all backfills for this connection
@@ -125,5 +127,5 @@ private:
     //!   threshold we use waitingBackfills
     std::list<UniqueDCPBackfillPtr> pendingBackfills;
     EventuallyPersistentEngine& engine;
-    ExTask managerTask;
+    const std::string connection;
 };

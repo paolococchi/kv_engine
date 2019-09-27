@@ -51,6 +51,8 @@
  *   -----------------------------------
  *
  */
+
+class BackfillManager;
 class BgFetcher;
 class Configuration;
 class EPBucket;
@@ -110,6 +112,16 @@ public:
 
     std::vector<Vbid> getVBucketsSortedByState();
     std::vector<Vbid> getVBuckets();
+
+    // @todo
+    void scheduleBackfill(std::shared_ptr<BackfillManager> manager,
+                          EventuallyPersistentEngine& engine);
+
+    // @todo
+    void notifyBackfillTask();
+
+    // @todo
+    void shutdownBackfillTask();
 
 private:
     // Holds the store configuration for the current shard.
@@ -209,6 +221,9 @@ private:
 
     std::unique_ptr<Flusher> flusher;
     std::unique_ptr<BgFetcher> bgFetcher;
+
+    // @todo: Try to turn into unique_ptr
+    std::shared_ptr<GlobalTask> backfillTask;
 
 public:
     std::atomic<size_t> highPriorityCount;

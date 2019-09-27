@@ -24,8 +24,8 @@
 static_assert(TaskPriority::VKeyStatBGFetchTask < TaskPriority::FlusherTask,
               "VKeyStatBGFetchTask not less than FlusherTask");
 
-static_assert(TaskPriority::ItemPager < TaskPriority::BackfillManagerTask,
-              "ItemPager not less than BackfillManagerTask");
+static_assert(TaskPriority::ItemPager < TaskPriority::BackfillTask,
+              "ItemPager not less than BackfillTask");
 
 std::atomic<size_t> GlobalTask::task_id_counter(1);
 

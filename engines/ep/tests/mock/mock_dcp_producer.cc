@@ -35,7 +35,7 @@ MockDcpProducer::MockDcpProducer(EventuallyPersistentEngine& theEngine,
                                  uint32_t flags,
                                  bool startTask)
     : DcpProducer(theEngine, cookie, name, flags, startTask) {
-    backfillMgr = std::make_shared<MockDcpBackfillManager>(engine_);
+    backfillMgr = std::make_shared<MockDcpBackfillManager>(engine_, name);
 }
 
 std::shared_ptr<MockActiveStream> MockDcpProducer::mockActiveStreamRequest(

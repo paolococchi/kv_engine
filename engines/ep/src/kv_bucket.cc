@@ -37,6 +37,7 @@
 #include "collections/manager.h"
 #include "conflict_resolution.h"
 #include "connmap.h"
+#include "dcp/backfill-manager.h"
 #include "dcp/dcpconnmap.h"
 #include "defragmenter.h"
 #include "durability/durability_completion_task.h"
@@ -2657,4 +2658,15 @@ SeqnoAckCallback KVBucket::makeSeqnoAckCB() const {
     return [&engine](Vbid vbid, int64_t seqno) {
         engine.getDcpConnMap().seqnoAckVBPassiveStream(vbid, seqno);
     };
+}
+
+void KVBucket::scheduleBackfill(std::shared_ptr<BackfillManager> manager,
+                                Vbid vbid) {
+    vbMap.getShardByVbId(vbid)->scheduleBackfill(manager, engine);
+}
+
+void KVBucket::notifyBackfillTasks() {
+    for (auto& shard : vbMap.shards) {
+        shard->notifyBackfillTask();
+    }
 }

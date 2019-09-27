@@ -51,8 +51,7 @@ TASK(VBucketMemoryAndDiskDeletionTask, AUXIO_TASK_IDX, 1)
 TASK(AccessScanner, AUXIO_TASK_IDX, 3)
 TASK(AccessScannerVisitor, AUXIO_TASK_IDX, 3)
 TASK(ActiveStreamCheckpointProcessorTask, AUXIO_TASK_IDX, 5)
-TASK(BackfillManagerTask, AUXIO_TASK_IDX, 8)
-
+TASK(BackfillTask, AUXIO_TASK_IDX, 8)
 
 // Read/Write IO tasks
 TASK(RollbackTask, WRITER_TASK_IDX, 1)

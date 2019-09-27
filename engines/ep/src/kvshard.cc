@@ -19,8 +19,11 @@
 #include <memory>
 
 #include "bgfetcher.h"
+#include "dcp/backfill-manager.h"
+#include "dcp/backfill_task.h"
 #include "ep_bucket.h"
 #include "ep_engine.h"
+#include "executorpool.h"
 #include "flusher.h"
 #include "kvshard.h"
 #ifdef EP_USE_MAGMA
@@ -127,4 +130,35 @@ std::vector<Vbid> KVShard::getVBuckets() {
         }
     }
     return rv;
+}
+
+void KVShard::scheduleBackfill(std::shared_ptr<BackfillManager> manager,
+                               EventuallyPersistentEngine& engine) {
+    if (backfillTask && !backfillTask->isdead()) {
+        dynamic_cast<BackfillTask&>(*backfillTask)
+                .queue(manager->getConnection(), manager);
+
+        ExecutorPool::get()->wake(backfillTask->getId());
+        return;
+    }
+
+    backfillTask = std::make_unique<BackfillTask>(engine);
+
+    dynamic_cast<BackfillTask&>(*backfillTask)
+            .queue(manager->getConnection(), manager);
+
+    ExecutorPool::get()->schedule(backfillTask);
+}
+
+void KVShard::notifyBackfillTask() {
+    if (backfillTask) {
+        ExecutorPool::get()->wake(backfillTask->getId());
+    }
+}
+
+void KVShard::shutdownBackfillTask() {
+    if (backfillTask) {
+        backfillTask->cancel();
+        backfillTask.reset();
+    }
 }

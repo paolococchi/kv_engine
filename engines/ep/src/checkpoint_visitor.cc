@@ -66,6 +66,6 @@ void CheckpointVisitor::complete() {
     // Wake up any sleeping backfill tasks if the memory usage is lowered
     // below the high watermark as a result of checkpoint removal.
     if (wasHighMemoryUsage && !store->isMemoryUsageTooHigh()) {
-        store->getEPEngine().getDcpConnMap().notifyBackfillManagerTasks();
+        store->notifyBackfillTasks();
     }
 }

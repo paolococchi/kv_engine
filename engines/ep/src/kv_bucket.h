@@ -669,6 +669,12 @@ public:
     /// set the buckets maxTtl
     void setMaxTtl(size_t max);
 
+    // @todo
+    void scheduleBackfill(std::shared_ptr<BackfillManager> manager, Vbid vbid);
+
+    // @todo
+    void notifyBackfillTasks() override;
+
 protected:
 
     GetValue getInternal(const DocKey& key,

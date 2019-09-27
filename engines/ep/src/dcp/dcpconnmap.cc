@@ -471,16 +471,6 @@ void DcpConnMap::seqnoAckVBPassiveStream(Vbid vbid, int64_t seqno) {
     }
 }
 
-void DcpConnMap::notifyBackfillManagerTasks() {
-    LockHolder lh(connsLock);
-    for (const auto& cookieToConn : map_) {
-        auto* producer = dynamic_cast<DcpProducer*>(cookieToConn.second.get());
-        if (producer) {
-            producer->notifyBackfillManager();
-        }
-    }
-}
-
 bool DcpConnMap::canAddBackfillToActiveQ()
 {
     std::lock_guard<std::mutex> lh(backfills.mutex);
